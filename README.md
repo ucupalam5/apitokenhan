@@ -17,9 +17,12 @@ Backend (`server.py`) jalan di VM dan diakses lewat ngrok — frontend ini cuma
 - `index.html` / `chat.html` — halaman chat (wajib API key `dsk-...`).
 - `models.html` — daftar model. `balance.html` — cek saldo key.
   `admin.html` — panel admin (login password, kelola key/model/harga).
-- Semua `fetch()` relatif dialihkan ke `API_BASE` (ngrok backend) +
-  header `ngrok-skip-browser-warning` biar ngrok tidak nampilin
-  halaman peringatan. Lihat snippet di tiap file (`[netlify-static]`).
+- Semua `fetch()` dialihkan ke `API_BASE = window.location.origin + '/'`
+  (base URL = domain situs sendiri, mis. `apitokenhan.my.id`) +
+  header `ngrok-skip-browser-warning`. `vercel.json` mem-proxy
+  `/api/*`, `/v1/*`, dan endpoint `/admin/*` ke backend ngrok, jadi
+  dari browser kelihatannya semua lewat domain sendiri.
+  Lihat snippet di tiap file (`[netlify-static]`).
 - API key dibuat di admin, lalu dimasukkan di kolom API KEY halaman chat.
   Pemakaian motong kuota key masing-masing.
 

@@ -1,4 +1,1 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": true
-}
+{"$schema":"https://openapi.vercel.sh/vercel.json","cleanUrls":true,"rewrites":[{"destination":"https://purely-mammogram-vowed.ngrok-free.dev/deepseek/api/:path*","source":"/api/:path*"},{"destination":"https://purely-mammogram-vowed.ngrok-free.dev/deepseek/v1/:path*","source":"/v1/:path*"},{"destination":"https://purely-mammogram-vowed.ngrok-free.dev/deepseek/admin/login","source":"/admin/login"},{"destination":"https://purely-mammogram-vowed.ngrok-free.dev/deepseek/admin/keys/:path*","source":"/admin/keys/:path*"},{"destination":"https://purely-mammogram-vowed.ngrok-free.dev/deepseek/admin/models/:path*","source":"/admin/models/:path*"},{"destination":"https://purely-mammogram-vowed.ngrok-free.dev/deepseek/admin/pricing","source":"/admin/pricing"},{"destination":"https://purely-mammogram-vowed.ngrok-free.dev/deepseek/admin/recent","source":"/admin/recent"}]}

@@ -217,10 +217,12 @@
   </div>
 </main>
 <script>
-// [netlify-static] API dipanggil langsung ke backend ngrok.
-// Halaman ini statis di Netlify; semua fetch relatif dialihin ke API_BASE
-// + header ngrok-skip-browser-warning biar ngrok tidak nampilin interstitial.
-const API_BASE = 'https://purely-mammogram-vowed.ngrok-free.dev/deepseek/';
+// [netlify-static] API dipanggil ke domain situs sendiri (base URL = domain
+// tempat halaman ini dibuka, mis. apitokenhan.my.id). Vercel (vercel.json)
+// mem-proxy /api/*, /v1/*, /admin/* ke backend ngrok. Header
+// ngrok-skip-browser-warning diteruskan biar ngrok tidak nampilin
+// halaman peringatan.
+const API_BASE = window.location.origin + '/';
 (function () {
   const _fetch = window.fetch.bind(window);
   window.fetch = function (url, opts) {
