@@ -30,3 +30,5 @@ Backend (`server.py`) jalan di VM dan diakses lewat ngrok — frontend ini cuma
 
 `server.py` + `models.json` + `keys.db` (SQLite) jalan di VM.
 Ganti `API_BASE` di tiap file HTML kalau URL backend pindah.
+
+<!-- deploy-trigger 2026-11-25 00:58 WIB -->
