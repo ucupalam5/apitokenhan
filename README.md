@@ -32,3 +32,4 @@ Backend (`server.py`) jalan di VM dan diakses lewat ngrok — frontend ini cuma
 Ganti `API_BASE` di tiap file HTML kalau URL backend pindah.
 
 <!-- deploy-trigger 2026-11-25 00:58 WIB -->
+<!-- deploy-trigger 2026-11-25 01:11 WIB - git connected -->
