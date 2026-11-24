@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HanRouter // Models</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050505; --surface: #0D0D0D; --surface2: #141414;
+    --border: #2A2A2A; --text: #D4D4D4; --muted: #808080;
+    --orange: #FF6B00; --green: #00E676; --red: #FF453A; --amber: #FFB000;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.55; }
+  a { color: var(--orange); text-decoration: none; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  header { border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10; }
+  .topbar { max-width: 900px; margin: 0 auto; padding: 10px 16px 0; }
+  .prompt { font-size: 13px; color: var(--muted); }
+  .prompt b { color: var(--green); font-weight: 700; }
+  .prompt .path { color: var(--orange); }
+  .tabs { display: flex; gap: 4px; margin-top: 10px; overflow-x: auto; }
+  .tabs a { padding: 8px 14px; font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--muted); border: 1px solid transparent; border-bottom: 0; white-space: nowrap; }
+  .tabs a:hover { color: var(--text); }
+  .tabs a.active { background: var(--orange); color: #000; }
+  main { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: 1px; }
+  h1 span { color: var(--orange); }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+  .panel { border: 1px solid var(--border); background: var(--surface); margin-bottom: 14px; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .panel-head h2 { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; word-break: break-all; }
+  .badge { background: var(--orange); color: #000; padding: 2px 8px; font-size: 11px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+  .badge.green { background: var(--green); }
+  .badge.grey { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .panel-body { padding: 12px; }
+  .desc { color: var(--muted); margin: 0 0 12px; font-size: 13px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .tag { background: var(--surface2); border: 1px solid var(--border); padding: 4px 10px; font-size: 11px; color: var(--muted); letter-spacing: 1px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { background: var(--orange); color: #000; border: 0; padding: 10px 16px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none; display: inline-block; letter-spacing: 1px; min-height: 40px; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:active { transform: scale(.98); }
+  .btn.ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.6; border: 1px solid var(--border); background: var(--surface); padding: 12px; }
+  .hint code { background: var(--surface2); padding: 2px 6px; font-size: 12px; color: var(--text); }
+  .hint b { color: var(--text); }
+  #status { color: var(--muted); font-size: 13px; }
+  @media (max-width: 640px) {
+    .tabs a { padding: 8px 10px; font-size: 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div class="prompt"><b>hanrouter@uncensored</b> : <span class="path">/hanrouter</span> #</div>
+    <nav class="tabs">
+      <a href="./">1:CHAT</a>
+      <a href="models" class="active">2:MODELS</a>
+      <a href="balance">3:BALANCE</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <h1>MODELS <span>// TERSEDIA</span></h1>
+  <p class="sub">Semua model di bawah ini bisa dipakai lewat Chat atau API. Pilih yang paling cocok.</p>
+  <div id="list"><p id="status">Memuat model...</p></div>
+  <div class="hint" style="margin-top: 18px;">
+    <b>CARA PAKAI LEWAT API:</b> Base URL <code id="baseUrl"></code> · Header <code>Authorization: Bearer dsk-...</code> · Body <code>{"model": "DeepSeek-V4-Flash-0731", "messages": [...]}</code><br>
+    Daftar lengkap format OpenAI: <code>/v1/models</code>. Cek sisa token di <a href="balance">BALANCE</a>.
+  </div>
+</main>
+<script>
+// [netlify-static] API dipanggil langsung ke backend ngrok.
+// Halaman ini statis di Netlify; semua fetch relatif dialihin ke API_BASE
+// + header ngrok-skip-browser-warning biar ngrok tidak nampilin interstitial.
+const API_BASE = 'https://purely-mammogram-vowed.ngrok-free.dev/deepseek/';
+(function () {
+  const _fetch = window.fetch.bind(window);
+  window.fetch = function (url, opts) {
+    opts = opts || {};
+    if (typeof url === 'string' && !url.startsWith('http')) {
+      url = API_BASE + url;
+    }
+    opts.headers = Object.assign({ 'ngrok-skip-browser-warning': 'true' }, opts.headers || {});
+    return _fetch(url, opts);
+  };
+})();
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function copyModel(id, btn) {
+  if (navigator.clipboard) navigator.clipboard.writeText(id);
+  if (btn) { const t = btn.textContent; btn.textContent = '[ COPIED ]'; setTimeout(() => { btn.textContent = t; }, 1500); }
+}
+async function load() {
+  const list = document.getElementById('list');
+  document.getElementById('baseUrl').textContent = location.origin + location.pathname.replace(/models\/?$/, '') + 'v1';
+  try {
+    const res = await fetch('api/models');
+    const j = await res.json();
+    if (!j.models || !j.models.length) { list.innerHTML = '<p id="status">Belum ada model.</p>'; return; }
+    list.innerHTML = '';
+    for (const m of j.models) {
+      const isDef = m.id === j.default;
+      const card = document.createElement('div');
+      card.className = 'panel';
+      const tags = (m.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('');
+      card.innerHTML = `
+        <div class="panel-head">
+          <h2>${esc(m.id)}</h2>
+          ${isDef ? '<span class="badge">DEFAULT</span>' : '<span class="badge grey">MODEL</span>'}
+        </div>
+        <div class="panel-body">
+          <p class="desc">${esc(m.desc || '')}</p>
+          ${tags ? `<div class="tags">${tags}</div>` : ''}
+          <div class="actions">
+            <a class="btn" href="./?model=${encodeURIComponent(m.id)}">[ CHAT // USE ]</a>
+            <button class="btn ghost" type="button" onclick="copyModel('${esc(m.id)}', this)">[ COPY NAME ]</button>
+          </div>
+        </div>`;
+      list.appendChild(card);
+    }
+  } catch (e) {
+    list.innerHTML = '<p id="status">Gagal memuat model: ' + esc(e.message) + '</p>';
+  }
+}
+load();
+</script>
+</body>
+</html>

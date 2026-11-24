@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HanRouter // Balance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050505; --surface: #0D0D0D; --surface2: #141414;
+    --border: #2A2A2A; --text: #D4D4D4; --muted: #808080;
+    --orange: #FF6B00; --green: #00E676; --red: #FF453A; --amber: #FFB000;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.55; }
+  a { color: var(--orange); text-decoration: none; }
+  a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  header { border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10; }
+  .topbar { max-width: 900px; margin: 0 auto; padding: 10px 16px 0; }
+  .prompt { font-size: 13px; color: var(--muted); }
+  .prompt b { color: var(--green); font-weight: 700; }
+  .prompt .path { color: var(--orange); }
+  .tabs { display: flex; gap: 4px; margin-top: 10px; overflow-x: auto; }
+  .tabs a { padding: 8px 14px; font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--muted); border: 1px solid transparent; border-bottom: 0; white-space: nowrap; }
+  .tabs a:hover { color: var(--text); }
+  .tabs a.active { background: var(--orange); color: #000; }
+  main { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: 1px; }
+  h1 span { color: var(--orange); }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+  .panel { border: 1px solid var(--border); background: var(--surface); margin-bottom: 16px; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .badge { background: var(--orange); color: #000; padding: 2px 8px; font-size: 11px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+  .badge.green { background: var(--green); }
+  .badge.red { background: var(--red); color: #fff; }
+  .badge.grey { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .panel-body { padding: 14px 12px; }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 0 0 12px; }
+  label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; margin: 12px 0 6px; text-transform: uppercase; }
+  input { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 12px; font-size: 14px; width: 100%; font-family: inherit; min-height: 44px; }
+  input:focus { outline: none; border-color: var(--orange); }
+  button { background: var(--orange); color: #000; border: 0; padding: 12px 18px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; letter-spacing: 1px; min-height: 44px; }
+  button:hover { filter: brightness(1.1); }
+  button:active { transform: scale(.98); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; font-size: 12px; min-height: 36px; }
+  .kv { display: grid; grid-template-columns: 170px 1fr; gap: 6px 12px; font-size: 13px; }
+  .kv dt { color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: 1px; padding-top: 2px; }
+  .kv dd { margin: 0; word-break: break-all; }
+  .kv dd.green { color: var(--green); font-weight: 700; }
+  .kv dd.orange { color: var(--orange); font-weight: 700; }
+  .kv dd.red { color: var(--red); font-weight: 700; }
+  .bar { height: 10px; background: var(--surface2); border: 1px solid var(--border); margin-top: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--orange); }
+  .bar i.green { background: var(--green); }
+  .bar i.red { background: var(--red); }
+  .bar-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .err { color: var(--red); font-size: 13px; min-height: 18px; margin: 10px 0 0; }
+  .big { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .big div { border: 1px solid var(--border); background: var(--surface2); padding: 12px; }
+  .big span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .big b { font-size: 20px; }
+  .big b.green { color: var(--green); }
+  .big b.orange { color: var(--orange); }
+  @media (max-width: 640px) {
+    .kv { grid-template-columns: 1fr; gap: 2px; }
+    .kv dd { margin-bottom: 8px; }
+    .big { grid-template-columns: 1fr; }
+    .tabs a { padding: 8px 10px; font-size: 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div class="prompt"><b>hanrouter@uncensored</b> : <span class="path">/hanrouter</span> #</div>
+    <nav class="tabs">
+      <a href="./">1:CHAT</a>
+      <a href="models">2:MODELS</a>
+      <a href="balance" class="active">3:BALANCE</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <h1>CEK SALDO <span>// API KEY</span></h1>
+  <p class="sub">Masukkan API key kamu (dsk-...) buat lihat sisa token, pemakaian, dan status key.</p>
+
+  <div class="panel">
+    <div class="panel-head"><span>ACCESS_CONTROL</span><span class="badge grey">KEY_CHECK</span></div>
+    <div class="panel-body">
+      <p class="hint">Key cuma dipakai buat ngecek saldo key itu sendiri — tidak disimpan, tidak dikirim ke mana-mana selain server ini.</p>
+      <label for="keyInput">API_KEY &gt;</label>
+      <input id="keyInput" type="text" placeholder="dsk-..." autocomplete="off" spellcheck="false">
+      <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <button id="checkBtn" type="button">[ CHECK // BALANCE ]</button>
+        <button class="ghost" id="clearBtn" type="button">[ CLEAR ]</button>
+      </div>
+      <p class="err" id="err"></p>
+    </div>
+  </div>
+
+  <div class="panel" id="resultPanel" style="display: none;">
+    <div class="panel-head"><span>KEYHOLDER // BALANCE</span><span class="badge green" id="statusBadge">ACTIVE</span></div>
+    <div class="panel-body">
+      <dl class="kv">
+        <dt>KEY_NAME</dt><dd id="rName">-</dd>
+        <dt>KEY_PREVIEW</dt><dd id="rPreview">-</dd>
+        <dt>BUDGET</dt><dd id="rBudget">-</dd>
+        <dt>TERPAKAI</dt><dd id="rUsed">-</dd>
+        <dt>SISA</dt><dd id="rRemaining" class="green">-</dd>
+        <dt>BERLAKU S/D</dt><dd id="rExpiry">-</dd>
+        <dt>RATE LIMIT</dt><dd id="rRpm">-</dd>
+        <dt>MODEL DIIZINKAN</dt><dd id="rModels">-</dd>
+        <dt>BIAYA TERPAKAI</dt><dd id="rCost">-</dd>
+        <dt>TERAKHIR DIPAKAI</dt><dd id="rLastUsed">-</dd>
+      </dl>
+      <div class="bar"><i id="usageBar" style="width: 0%"></i></div>
+      <div class="bar-meta"><span id="pctUsed">0% USED</span><span id="leftTxt"></span></div>
+      <div class="big">
+        <div><span>SISA TOKEN</span><b class="green" id="bigRemaining">-</b></div>
+        <div><span>ESTIMASI CHAT</span><b class="orange" id="bigChats">-</b></div>
+      </div>
+      <p class="hint" style="margin-top: 14px;">1 chat ≈ 400 token. Sisa token di atas dihitung dari budget dikurangi pemakaian tercatat.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><span>INFO</span></div>
+    <div class="panel-body">
+      <p class="hint">Belum punya key? Minta ke operator. Key dipakai di app apa pun yang support OpenAI-compatible API — Base URL: <code id="baseUrl"></code>, header <code>Authorization: Bearer dsk-...</code>.</p>
+    </div>
+  </div>
+</main>
+<script>
+// [netlify-static] API dipanggil langsung ke backend ngrok.
+// Halaman ini statis di Netlify; semua fetch relatif dialihin ke API_BASE
+// + header ngrok-skip-browser-warning biar ngrok tidak nampilin interstitial.
+const API_BASE = 'https://purely-mammogram-vowed.ngrok-free.dev/deepseek/';
+(function () {
+  const _fetch = window.fetch.bind(window);
+  window.fetch = function (url, opts) {
+    opts = opts || {};
+    if (typeof url === 'string' && !url.startsWith('http')) {
+      url = API_BASE + url;
+    }
+    opts.headers = Object.assign({ 'ngrok-skip-browser-warning': 'true' }, opts.headers || {});
+    return _fetch(url, opts);
+  };
+})();
+
+const keyInput = document.getElementById('keyInput');
+const checkBtn = document.getElementById('checkBtn');
+const errEl = document.getElementById('err');
+const resultPanel = document.getElementById('resultPanel');
+
+document.getElementById('baseUrl').textContent = location.origin + location.pathname.replace(/balance\/?$/, '') + 'v1';
+
+function fmt(n) { return (n || 0).toLocaleString('id-ID'); }
+function fmtTime(ts) {
+  if (!ts) return 'belum pernah dipakai';
+  const d = new Date(ts * 1000);
+  return d.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) + ' WIB';
+}
+function fmtDate(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+async function check() {
+  const key = keyInput.value.trim();
+  if (!key) { errEl.textContent = 'Isi API key dulu.'; return; }
+  errEl.textContent = '';
+  checkBtn.disabled = true;
+  checkBtn.textContent = '[ CHECKING... ]';
+  try {
+    const res = await fetch('api/key/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errEl.textContent = j.error || ('Gagal cek saldo (HTTP ' + res.status + ')');
+      resultPanel.style.display = 'none';
+      return;
+    }
+    const pct = j.budget ? Math.round(j.used / j.budget * 100) : 0;
+    document.getElementById('rName').textContent = j.name || '-';
+    document.getElementById('rPreview').textContent = j.key_preview || '-';
+    document.getElementById('rBudget').textContent = fmt(j.budget) + ' token';
+    document.getElementById('rUsed').textContent = fmt(j.used) + ' token (' + pct + '%)';
+    const remEl = document.getElementById('rRemaining');
+    remEl.textContent = fmt(j.remaining) + ' token';
+    remEl.className = j.remaining <= 0 ? 'red' : 'green';
+    document.getElementById('rLastUsed').textContent = fmtTime(j.last_used_at);
+    document.getElementById('rExpiry').textContent = j.expires_at ? fmtDate(j.expires_at) : 'selamanya';
+    document.getElementById('rExpiry').className = j.expired ? 'red' : '';
+    document.getElementById('rRpm').textContent = j.rpm ? fmt(j.rpm) + ' req/menit' : 'tanpa batas';
+    document.getElementById('rModels').textContent = (j.allowed_models && j.allowed_models.length) ? j.allowed_models.join(', ') : 'semua model';
+    document.getElementById('rCost').textContent = 'Rp' + fmt(Math.round(j.cost_idr || 0));
+    const bar = document.getElementById('usageBar');
+    bar.style.width = Math.min(pct, 100) + '%';
+    bar.className = pct >= 100 ? 'red' : pct >= 80 ? '' : 'green';
+    document.getElementById('pctUsed').textContent = pct + '% USED';
+    document.getElementById('leftTxt').textContent = fmt(j.remaining) + ' LEFT';
+    document.getElementById('bigRemaining').textContent = fmt(j.remaining);
+    document.getElementById('bigRemaining').className = j.remaining <= 0 ? 'red' : 'green';
+    document.getElementById('bigChats').textContent = '≈ ' + Math.max(0, Math.floor(j.remaining / 400)) + ' chat';
+    const badge = document.getElementById('statusBadge');
+    if (j.expired) { badge.textContent = 'EXPIRED'; badge.className = 'badge red'; }
+    else if (!j.enabled) { badge.textContent = 'DISABLED'; badge.className = 'badge red'; }
+    else if (j.remaining <= 0) { badge.textContent = 'EXHAUSTED'; badge.className = 'badge red'; }
+    else { badge.textContent = 'ACTIVE'; badge.className = 'badge green'; }
+    resultPanel.style.display = '';
+  } catch (e) {
+    errEl.textContent = 'Error jaringan: ' + e.message;
+    resultPanel.style.display = 'none';
+  }
+  checkBtn.disabled = false;
+  checkBtn.textContent = '[ CHECK // BALANCE ]';
+}
+
+checkBtn.addEventListener('click', check);
+document.getElementById('clearBtn').addEventListener('click', () => {
+  keyInput.value = '';
+  errEl.textContent = '';
+  resultPanel.style.display = 'none';
+  keyInput.focus();
+});
+keyInput.addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
+keyInput.focus();
+</script>
+</body>
+</html>

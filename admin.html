@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HanRouter // Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050505; --surface: #0D0D0D; --surface2: #141414;
+    --border: #2A2A2A; --text: #D4D4D4; --muted: #808080;
+    --orange: #FF6B00; --green: #00E676; --red: #FF453A; --amber: #FFB000;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.55; }
+  a { color: var(--orange); text-decoration: none; }
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  header { border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10; }
+  .topbar { max-width: 900px; margin: 0 auto; padding: 10px 16px 0; }
+  .prompt { font-size: 13px; color: var(--muted); }
+  .prompt b { color: var(--green); font-weight: 700; }
+  .prompt .path { color: var(--orange); }
+  .tabs { display: flex; gap: 4px; margin-top: 10px; overflow-x: auto; }
+  .tabs a { padding: 8px 14px; font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--muted); border: 1px solid transparent; border-bottom: 0; white-space: nowrap; }
+  .tabs a:hover { color: var(--text); }
+  .tabs a.active { background: var(--orange); color: #000; }
+  main { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: 1px; }
+  h1 span { color: var(--orange); }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: 13px; }
+  .panel { border: 1px solid var(--border); background: var(--surface); margin-bottom: 16px; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .badge { background: var(--orange); color: #000; padding: 2px 8px; font-size: 11px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+  .badge.green { background: var(--green); }
+  .badge.red { background: var(--red); color: #fff; }
+  .badge.grey { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+  .panel-body { padding: 14px 12px; }
+  label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: 1px; margin: 12px 0 6px; text-transform: uppercase; }
+  input, select, textarea { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 11px 12px; font-size: 13px; width: 100%; font-family: inherit; min-height: 44px; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--orange); }
+  textarea { min-height: 90px; resize: vertical; line-height: 1.5; }
+  button { background: var(--orange); color: #000; border: 0; padding: 11px 16px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; letter-spacing: 1px; min-height: 44px; }
+  button:hover { filter: brightness(1.1); }
+  button:active { transform: scale(.98); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.danger { background: var(--red); color: #fff; padding: 8px 12px; font-size: 11px; min-height: 34px; }
+  button.ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; font-size: 11px; min-height: 34px; }
+  button.small { padding: 8px 12px; font-size: 11px; min-height: 34px; }
+  .hint { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 10px 0 0; }
+  .hint code { background: var(--surface2); padding: 2px 6px; font-size: 12px; color: var(--text); }
+  .hint b { color: var(--text); }
+  .err { color: var(--red); font-size: 13px; min-height: 18px; margin: 10px 0 0; }
+  .ok { color: var(--green); }
+  .warn { color: var(--amber); }
+  .red { color: var(--red); }
+  .mono { font-size: 12px; word-break: break-all; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .tablewrap { overflow-x: auto; }
+  .bar { height: 8px; background: var(--surface2); border: 1px solid var(--border); margin-top: 6px; overflow: hidden; min-width: 80px; }
+  .bar i { display: block; height: 100%; background: var(--green); }
+  .bar i.warn { background: var(--amber); }
+  .bar i.red { background: var(--red); }
+  #newkey { background: #0A1A0F; border: 1px solid #1E5C2E; padding: 12px; margin-top: 14px; display: none; }
+  #newkey .mono { color: var(--green); font-size: 14px; }
+  .model-card { border: 1px solid var(--border); background: var(--surface2); padding: 12px; margin-bottom: 12px; }
+  .model-card h3 { margin: 0 0 4px; font-size: 14px; }
+  .model-card h3 .badge { margin-left: 8px; vertical-align: middle; }
+  .model-card .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .model-card .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .stream-row { display: grid; grid-template-columns: 74px 1fr auto; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .stream-row:last-child { border-bottom: 0; }
+  .stream-row .ts { color: var(--muted); }
+  .stream-row .tok { color: var(--orange); font-weight: 700; white-space: nowrap; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .stat-grid div { border: 1px solid var(--border); background: var(--surface2); padding: 12px; }
+  .stat-grid span { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .stat-grid b { font-size: 20px; }
+  @media (max-width: 640px) {
+    .tabs a { padding: 8px 10px; font-size: 11px; }
+    .model-card .row { grid-template-columns: 1fr; }
+    .stat-grid { grid-template-columns: 1fr; }
+    th:nth-child(2), td:nth-child(2) { display: none; }
+    .stream-row { grid-template-columns: 64px 1fr; }
+    .stream-row .tok { grid-column: 2; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div class="prompt"><b>hanrouter@uncensored</b> : <span class="path">/hanrouter</span> #</div>
+    <nav class="tabs">
+      <a href="./">1:CHAT</a>
+      <a href="models">2:MODELS</a>
+      <a href="balance">3:BALANCE</a>
+      <a href="admin" class="active">4:ADMIN</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <div class="panel" id="loginCard">
+    <div class="panel-head"><span>ADMIN // LOGIN</span><span class="badge grey">AUTH</span></div>
+    <div class="panel-body">
+      <label for="pw">PASSWORD &gt;</label>
+      <input type="password" id="pw" placeholder="Password admin" autocomplete="current-password">
+      <div style="margin-top: 14px;"><button onclick="login()">[ LOGIN ]</button></div>
+      <p class="err" id="loginErr"></p>
+    </div>
+  </div>
+
+  <div id="panel" style="display:none">
+    <h1>ADMIN <span>// CONTROL PANEL</span></h1>
+    <p class="sub">Kelola API key, model, persona, dan pantau pemakaian live.</p>
+
+    <div class="panel">
+      <div class="panel-head"><span>OVERVIEW</span><span class="badge green" id="overviewBadge">LIVE</span></div>
+      <div class="panel-body">
+        <div class="stat-grid">
+          <div><span>TOTAL KEYS</span><b id="statKeys">-</b></div>
+          <div><span>TOTAL TOKEN TERPAKAI</span><b id="statUsed">-</b></div>
+          <div><span>MODEL AKTIF</span><b id="statModels">-</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>API KEYS // SALDO TOKEN</span><span class="badge">KEYS</span></div>
+      <div class="panel-body">
+        <label for="kname">NAMA KEY</label>
+        <input id="kname" placeholder="mis: telegram-bot, han-ai">
+        <label for="kbudget">JUMLAH TOKEN</label>
+        <input id="kbudget" type="number" min="1" placeholder="mis: 1000000">
+        <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;" id="budgetPresets">
+          <button class="ghost" type="button" data-budget="100000">[ 100K ]</button>
+          <button class="ghost" type="button" data-budget="1000000">[ 1M ]</button>
+          <button class="ghost" type="button" data-budget="5000000">[ 5M ]</button>
+          <button class="ghost" type="button" data-budget="10000000">[ 10M ]</button>
+        </div>
+        <label for="krpm">RATE LIMIT (request/menit, 0 = tanpa batas)</label>
+        <input id="krpm" type="number" min="0" max="10000" value="60" placeholder="mis: 60">
+        <label for="kexpiry">MASA BERLAKU</label>
+        <select id="kexpiry">
+          <option value="0">Selamanya (tidak kadaluarsa)</option>
+          <option value="7">7 hari</option>
+          <option value="30" selected>30 hari</option>
+          <option value="90">90 hari</option>
+          <option value="365">1 tahun</option>
+        </select>
+        <label>MODEL YANG DIIZINKAN (kosong = semua model)</label>
+        <div id="kmodels" style="display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px;"></div>
+        <p class="hint">1 token ≈ 4 karakter. Tiap request makan ~200 prompt token (overhead), jadi 1 juta token ≈ ~2.500 chat. Key baru cuma ditampilkan <b>sekali</b> di bawah — salin langsung.</p>
+        <div style="margin-top: 12px;"><button onclick="createKey()">[ CREATE KEY ]</button></div>
+        <div id="newkey">
+          <div style="font-size: 12px; margin-bottom: 6px;">KEY BARU — salin sekarang, tidak akan ditampilkan lagi:</div>
+          <div class="mono" id="newkeyVal"></div>
+          <div class="hint" id="newkeyMeta" style="margin-top: 8px;"></div>
+          <div style="margin-top: 10px;"><button class="ghost" onclick="copyNewKey()">[ COPY KEY ]</button></div>
+        </div>
+        <div class="tablewrap" style="margin-top: 16px;"><div id="keyList">Memuat...</div></div>
+        <p class="hint" style="margin-top: 14px;">Pakai key di app apa pun yang support OpenAI-compatible API:<br>
+        Base URL: <code id="baseUrl"></code><br>
+        Header: <code>Authorization: Bearer dsk-...</code><br>
+        Model: lihat <a href="models">halaman MODELS</a>. Cek saldo per key di <a href="balance">BALANCE</a>.</p>
+      </div>
+    </div>
+
+    <div class="panel" id="usagePanel" style="display:none">
+      <div class="panel-head"><span>RIWAYAT // <span id="usageTitle">-</span></span><span class="badge" id="usageCost"></span></div>
+      <div class="panel-body">
+        <div id="usageBody">Memuat...</div>
+        <div style="margin-top: 10px;"><button class="ghost" onclick="document.getElementById('usagePanel').style.display='none'">[ TUTUP ]</button></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>HARGA // IDR PER 1 JUTA TOKEN</span><span class="badge">PRICING</span></div>
+      <div class="panel-body">
+        <p class="hint">Harga dipakai buat hitung biaya (Rp) tiap key. Ubah sesuai harga asli upstream, lalu SAVE. Kosongkan = Rp0.</p>
+        <div id="pricingList">Memuat...</div>
+        <div style="margin-top: 12px;"><button onclick="savePricing()">[ SAVE HARGA ]</button></div>
+        <p class="err" id="pricingErr"></p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>MODELS // PERSONA &amp; NAMA</span><span class="badge">MODELS</span></div>
+      <div class="panel-body">
+        <p class="hint">Ubah nama model sesuka hati (yang tampil di website cuma nama ini), pasang persona sendiri per model (kosong = pakai persona default), dan atur model default. Upstream dipilih dari daftar — nama provider tidak tampil di website.</p>
+        <div id="modelList" style="margin-top: 14px;">Memuat...</div>
+        <div style="border-top: 1px solid var(--border); margin-top: 16px; padding-top: 14px;">
+          <label for="nmId">NAMA MODEL BARU (PUBLIK)</label>
+          <input id="nmId" placeholder="mis: DeepSeek-Pro">
+          <label for="nmUpstream">MODEL UPSTREAM</label>
+          <select id="nmUpstream"></select>
+          <label for="nmPersona">PERSONA (OPSIONAL — kosong = default)</label>
+          <textarea id="nmPersona" placeholder="You are a helpful AI assistant..."></textarea>
+          <label for="nmDesc">DESKRIPSI</label>
+          <input id="nmDesc" placeholder="Deskripsi singkat model">
+          <div style="margin-top: 12px;"><button onclick="addModel()">[ ADD MODEL ]</button></div>
+          <p class="err" id="modelErr"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span>LIVE // STREAM PEMAKAIAN</span><span class="badge green">AUTO 5s</span></div>
+      <div class="panel-body">
+        <div id="streamList">Memuat...</div>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+// [netlify-static] API dipanggil langsung ke backend ngrok.
+// Halaman ini statis di Netlify; semua fetch relatif dialihin ke API_BASE
+// + header ngrok-skip-browser-warning biar ngrok tidak nampilin interstitial.
+const API_BASE = 'https://purely-mammogram-vowed.ngrok-free.dev/deepseek/';
+(function () {
+  const _fetch = window.fetch.bind(window);
+  window.fetch = function (url, opts) {
+    opts = opts || {};
+    if (typeof url === 'string' && !url.startsWith('http')) {
+      url = API_BASE + url;
+    }
+    opts.headers = Object.assign({ 'ngrok-skip-browser-warning': 'true' }, opts.headers || {});
+    return _fetch(url, opts);
+  };
+})();
+
+let token = sessionStorage.getItem('ds_admin') || '';
+const base = '';
+let lastNewKey = '';
+let knownUpstreams = {};
+
+function fmt(n) { return (n || 0).toLocaleString('id-ID'); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function fmtTime(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts * 1000);
+  return d.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+function authHeaders(extra) {
+  return Object.assign({ 'X-Admin-Token': token }, extra || {});
+}
+
+async function login() {
+  const pw = document.getElementById('pw').value;
+  const res = await fetch(base + 'admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+  const j = await res.json().catch(() => ({}));
+  if (res.ok && j.token) {
+    token = j.token;
+    sessionStorage.setItem('ds_admin', token);
+    document.getElementById('loginCard').style.display = 'none';
+    document.getElementById('panel').style.display = 'block';
+    loadAll();
+  } else {
+    document.getElementById('loginErr').textContent = 'Password salah.';
+  }
+}
+
+async function loadAll() {
+  await Promise.all([loadKeys(), loadModels(), loadStream(), loadPricing()]);
+}
+
+async function loadKeys() {
+  const res = await fetch(base + 'admin/keys', { headers: authHeaders() });
+  if (res.status === 401) { sessionStorage.removeItem('ds_admin'); location.reload(); return; }
+  const j = await res.json();
+  document.getElementById('baseUrl').textContent = location.origin + location.pathname.replace(/admin\/?$/, '') + 'v1';
+  document.getElementById('statKeys').textContent = j.keys.length;
+  document.getElementById('statUsed').textContent = fmt(j.total_used);
+  let html = '<table><tr><th>NAMA</th><th>KEY</th><th>BUDGET</th><th>TERPAKAI</th><th>SISA</th><th>RPM</th><th>BERLAKU S/D</th><th>MODEL</th><th>BIAYA</th><th>STATUS</th><th></th></tr>';
+  for (const k of j.keys) {
+    const pct = k.budget ? Math.round(k.used / k.budget * 100) : 0;
+    const cls = pct >= 100 ? 'red' : pct >= 80 ? 'warn' : 'ok';
+    const barCls = pct >= 100 ? 'red' : pct >= 80 ? 'warn' : '';
+    const exp = k.expires_at ? fmtDate(k.expires_at) : '-';
+    const expCls = k.expired ? 'red' : '';
+    const models = (k.allowed_models && k.allowed_models.length) ? esc(k.allowed_models.join(', ')) : 'semua';
+    const status = k.expired ? '<span class="red">KADALUWARSA</span>' : (k.enabled ? '<span class="ok">AKTIF</span>' : '<span class="warn">NONAKTIF</span>');
+    const toggleBtn = k.enabled
+      ? `<button class="ghost" onclick="toggleKey('${k.id}', false)">[ NONAKTIF ]</button>`
+      : `<button class="ghost" onclick="toggleKey('${k.id}', true)">[ AKTIFKAN ]</button>`;
+    html += `<tr><td><b>${esc(k.name)}</b></td><td class="mono">${esc(k.key_preview)}</td><td>${fmt(k.budget)}</td><td class="${cls}">${fmt(k.used)} (${pct}%)<div class="bar"><i class="${barCls}" style="width:${Math.min(pct, 100)}%"></i></div></td><td><b>${fmt(k.remaining)}</b></td><td>${k.rpm ? fmt(k.rpm) : '∞'}</td><td class="${expCls}">${exp}</td><td style="font-size:11px">${models}</td><td>Rp${fmt(Math.round(k.cost_idr || 0))}</td><td>${status}</td><td style="white-space:nowrap">${toggleBtn} <button class="ghost" onclick="showUsage('${k.id}')">RIWAYAT</button> <button class="danger" onclick="revoke('${k.id}')">HAPUS</button></td></tr>`;
+  }
+  html += '</table>';
+  html += `<p class="hint" style="margin-top: 12px;">Total terpakai semua key: <b>${fmt(j.total_used)}</b> token.</p>`;
+  document.getElementById('keyList').innerHTML = html;
+}
+
+function fmtDate(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+async function createKey() {
+  const name = document.getElementById('kname').value.trim();
+  const budget = parseInt(document.getElementById('kbudget').value, 10);
+  if (!budget || budget <= 0) { alert('Isi jumlah token dulu (angka > 0).'); return; }
+  const rpm = parseInt(document.getElementById('krpm').value, 10);
+  const expires_days = parseInt(document.getElementById('kexpiry').value, 10);
+  const allowed_models = Array.from(document.querySelectorAll('#kmodels input[type=checkbox]:checked')).map(c => c.value);
+  const res = await fetch(base + 'admin/keys', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ name: name || 'key', budget, rpm: isNaN(rpm) ? 60 : rpm, expires_days: isNaN(expires_days) ? 0 : expires_days, allowed_models }) });
+  const j = await res.json();
+  if (!res.ok) { alert(j.error || 'Gagal buat key.'); return; }
+  lastNewKey = j.key;
+  document.getElementById('newkey').style.display = 'block';
+  document.getElementById('newkeyVal').textContent = j.key;
+  document.getElementById('newkeyMeta').textContent = `Nama: ${j.name} | Budget: ${fmt(j.budget)} token | RPM: ${j.rpm || '∞'} | Berlaku: ${j.expires_at ? fmtDate(j.expires_at) : 'selamanya'}`;
+  loadKeys();
+}
+
+async function toggleKey(id, enable) {
+  if (!confirm(enable ? 'Aktifkan key ini lagi?' : 'Nonaktifkan key ini? Key nonaktif tidak bisa dipakai sampai diaktifkan lagi.')) return;
+  const res = await fetch(base + 'admin/keys/' + encodeURIComponent(id), { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ enabled: enable }) });
+  if (res.ok) loadKeys(); else alert('Gagal ubah status key.');
+}
+
+async function showUsage(id) {
+  const panel = document.getElementById('usagePanel');
+  panel.style.display = 'block';
+  document.getElementById('usageBody').innerHTML = 'Memuat...';
+  const res = await fetch(base + 'admin/keys/' + encodeURIComponent(id) + '/usage', { headers: authHeaders() });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { document.getElementById('usageBody').innerHTML = '<p class="err">Gagal muat riwayat.</p>'; return; }
+  document.getElementById('usageTitle').textContent = (j.name || '') + ' (' + (j.key_preview || '') + ')';
+  document.getElementById('usageCost').textContent = 'BIAYA Rp' + fmt(Math.round(j.cost_idr || 0));
+  let html = '';
+  if (j.per_day && j.per_day.length) {
+    html += '<p class="hint">PER HARI (30 hari terakhir):</p><table><tr><th>TANGGAL</th><th>REQUEST</th><th>TOKEN</th></tr>';
+    for (const d of j.per_day) html += `<tr><td>${esc(d.d)}</td><td>${fmt(d.n)}</td><td>${fmt(d.t)}</td></tr>`;
+    html += '</table>';
+  }
+  if (j.usage && j.usage.length) {
+    html += '<p class="hint" style="margin-top:12px">100 PEMAKAIAN TERAKHIR:</p><table><tr><th>WAKTU</th><th>MODEL</th><th>PROMPT</th><th>COMPLETION</th><th>TOTAL</th></tr>';
+    for (const u of j.usage) html += `<tr><td>${fmtTime(u.ts)}</td><td style="font-size:11px">${esc(u.model)}</td><td>${fmt(u.prompt_tokens)}</td><td>${fmt(u.completion_tokens)}</td><td>${fmt(u.total_tokens)}</td></tr>`;
+    html += '</table>';
+  } else if (!html) {
+    html = '<p class="hint">Belum ada pemakaian tercatat untuk key ini.</p>';
+  }
+  document.getElementById('usageBody').innerHTML = html;
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function loadPricing() {
+  const res = await fetch(base + 'admin/pricing', { headers: authHeaders() });
+  if (!res.ok) { document.getElementById('pricingList').innerHTML = '<p class="err">Gagal muat harga.</p>'; return; }
+  const j = await res.json();
+  const p = j.pricing || {};
+  let html = '<table><tr><th>MODEL UPSTREAM</th><th>IN (Rp/1jt)</th><th>OUT (Rp/1jt)</th></tr>';
+  for (const [up, v] of Object.entries(p)) {
+    html += `<tr><td class="mono" style="font-size:11px">${esc(up)}</td><td><input type="number" min="0" data-pk="${esc(up)}" data-pf="in" value="${v.in}" style="width:120px"></td><td><input type="number" min="0" data-pk="${esc(up)}" data-pf="out" value="${v.out}" style="width:120px"></td></tr>`;
+  }
+  html += '</table>';
+  document.getElementById('pricingList').innerHTML = html;
+}
+
+async function savePricing() {
+  const pricing = {};
+  document.querySelectorAll('#pricingList input[data-pk]').forEach(inp => {
+    const k = inp.dataset.pk;
+    if (!pricing[k]) pricing[k] = { in: 0, out: 0 };
+    pricing[k][inp.dataset.pf] = Math.max(0, parseInt(inp.value, 10) || 0);
+  });
+  const res = await fetch(base + 'admin/pricing', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ pricing }) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { document.getElementById('pricingErr').textContent = j.error || 'Gagal simpan harga.'; return; }
+  document.getElementById('pricingErr').textContent = '';
+  loadKeys();
+  alert('Harga tersimpan.');
+}
+
+function copyNewKey() {
+  if (lastNewKey && navigator.clipboard) navigator.clipboard.writeText(lastNewKey);
+}
+
+async function revoke(id) {
+  if (!confirm('Hapus key ini? Key yang sudah dihapus tidak bisa dipakai lagi.')) return;
+  const res = await fetch(base + 'admin/keys/' + encodeURIComponent(id), { method: 'DELETE', headers: authHeaders() });
+  if (res.ok) loadKeys(); else alert('Gagal hapus.');
+}
+
+async function loadModels() {
+  const res = await fetch(base + 'admin/models', { headers: authHeaders() });
+  if (res.status === 401) { sessionStorage.removeItem('ds_admin'); location.reload(); return; }
+  const j = await res.json();
+  knownUpstreams = j.known_upstreams || {};
+  document.getElementById('statModels').textContent = Object.keys(j.models || {}).length;
+  const sel = document.getElementById('nmUpstream');
+  sel.innerHTML = '';
+  for (const name of Object.keys(knownUpstreams)) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  }
+  const wrap = document.getElementById('modelList');
+  wrap.innerHTML = '';
+  // checkbox model buat batas per key (form buat key)
+  const km = document.getElementById('kmodels');
+  km.innerHTML = Object.keys(j.models || {}).map(mid =>
+    `<label style="display:inline-flex;gap:6px;align-items:center;border:1px solid var(--border);padding:6px 10px;font-size:12px;cursor:pointer;"><input type="checkbox" value="${esc(mid)}" style="width:auto;margin:0"> ${esc(mid)}</label>`
+  ).join('') || '<span class="hint">Belum ada model.</span>';
+  for (const [mid, m] of Object.entries(j.models || {})) {
+    const isDef = mid === j.default;
+    const card = document.createElement('div');
+    card.className = 'model-card';
+    card.innerHTML = `
+      <h3>${esc(mid)} ${isDef ? '<span class="badge">DEFAULT</span>' : ''}</h3>
+      <div class="row">
+        <div>
+          <label>NAMA PUBLIK</label>
+          <input data-f="name" value="${esc(mid)}">
+        </div>
+        <div>
+          <label>UPSTREAM</label>
+          <select data-f="upstream"></select>
+        </div>
+      </div>
+      <label>PERSONA (KOSONG = DEFAULT)</label>
+      <textarea data-f="persona" placeholder="You are a helpful AI assistant...">${esc(m.persona || '')}</textarea>
+      <label>DESKRIPSI</label>
+      <input data-f="desc" value="${esc(m.desc || '')}">
+      <label>TAGS (PISAH KOMA)</label>
+      <input data-f="tags" value="${esc((m.tags || []).join(', '))}">
+      <div style="border-top: 1px solid var(--border); margin-top: 12px; padding-top: 12px;">
+        <label style="margin-top: 0;">PERSONA FILES — SOUL.md / SKILL.md / prefill.json</label>
+        <div data-filelist></div>
+        <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+          <input type="file" data-fileinput accept=".md,.json,.txt" style="flex: 1; min-width: 180px;">
+          <select data-filekind style="flex: 0 0 170px;">
+            <option value="soul">SOUL.md (persona)</option>
+            <option value="skill">SKILL.md (skills)</option>
+            <option value="prefill">prefill.json</option>
+          </select>
+          <button class="small" data-act="upload" type="button">[ UPLOAD ]</button>
+        </div>
+        <p class="hint">File yang di-upload ditempel ke system prompt model ini — SOUL.md jadi persona utama, SKILL.md jadi instruksi tambahan, prefill.json diambil field persona/system-nya. Maks 200KB/file.</p>
+      </div>
+      <div class="actions">
+        <button class="small" data-act="save">[ SAVE ]</button>
+        ${isDef ? '' : '<button class="small ghost" data-act="default">[ SET DEFAULT ]</button>'}
+        <button class="small danger" data-act="del">[ DELETE ]</button>
+      </div>`;
+    const upSel = card.querySelector('[data-f="upstream"]');
+    for (const name of Object.keys(knownUpstreams)) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      upSel.appendChild(opt);
+    }
+    // pilih upstream yang sedang dipakai (cocokkan id upstream -> nama tampilan)
+    let curUp = '';
+    for (const [name, uid] of Object.entries(knownUpstreams)) {
+      if (uid === m.upstream) { curUp = name; break; }
+    }
+    upSel.value = curUp || Object.keys(knownUpstreams)[0] || '';
+    // render daftar persona files + wire upload/delete
+    const fileListEl = card.querySelector('[data-filelist]');
+    function renderFiles() {
+      const files = m.persona_files || {};
+      const names = Object.keys(files);
+      if (!names.length) { fileListEl.innerHTML = '<p class="hint">Belum ada file persona.</p>'; return; }
+      fileListEl.innerHTML = names.map(fn => {
+        const f = files[fn];
+        return `<div style="display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border);">
+          <span style="flex: 1; font-size: 12px;">${esc(fn)} <span style="color: var(--muted);">[${esc(f.kind)} · ${fmt(f.size || (f.content || '').length)} byte]</span></span>
+          <button class="ghost" type="button" data-delfile="${esc(fn)}">[ HAPUS ]</button>
+        </div>`;
+      }).join('');
+      fileListEl.querySelectorAll('[data-delfile]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Hapus file "' + btn.dataset.delfile + '" dari model ini?')) return;
+          const res = await fetch(base + 'admin/models/' + encodeURIComponent(mid) + '/persona-file/' + encodeURIComponent(btn.dataset.delfile), { method: 'DELETE', headers: authHeaders() });
+          if (res.ok) loadModels(); else alert('Gagal hapus file.');
+        });
+      });
+    }
+    renderFiles();
+    card.querySelector('[data-act="upload"]').addEventListener('click', () => {
+      const fi = card.querySelector('[data-fileinput]');
+      const file = fi.files && fi.files[0];
+      if (!file) { alert('Pilih file dulu (SOUL.md / SKILL.md / prefill.json).'); return; }
+      const kind = card.querySelector('[data-filekind]').value;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const content = reader.result || '';
+        const res = await fetch(base + 'admin/models/' + encodeURIComponent(mid) + '/persona-file', {
+          method: 'POST',
+          headers: authHeaders({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ filename: file.name, kind, content })
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(j.error || 'Gagal upload file.'); return; }
+        fi.value = '';
+        loadModels();
+      };
+      reader.onerror = () => alert('Gagal baca file.');
+      reader.readAsText(file);
+    });
+    card.querySelector('[data-act="save"]').addEventListener('click', () => saveModel(card, mid));
+    const defBtn = card.querySelector('[data-act="default"]');
+    if (defBtn) defBtn.addEventListener('click', () => saveModel(card, mid, true));
+    card.querySelector('[data-act="del"]').addEventListener('click', () => deleteModel(mid));
+    wrap.appendChild(card);
+  }
+}
+
+async function saveModel(card, oldId, setDefault) {
+  const name = card.querySelector('[data-f="name"]').value.trim();
+  const upstream = card.querySelector('[data-f="upstream"]').value;
+  const persona = card.querySelector('[data-f="persona"]').value;
+  const desc = card.querySelector('[data-f="desc"]').value;
+  const tags = card.querySelector('[data-f="tags"]').value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!name) { alert('Nama model wajib diisi.'); return; }
+  const res = await fetch(base + 'admin/models', {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ old_id: oldId, id: name, upstream, persona, desc, tags, set_default: !!setDefault })
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { alert(j.error || 'Gagal simpan model.'); return; }
+  loadModels();
+}
+
+async function deleteModel(mid) {
+  if (!confirm('Hapus model "' + mid + '"? Model ini tidak bisa dipakai lagi.')) return;
+  const res = await fetch(base + 'admin/models/' + encodeURIComponent(mid), { method: 'DELETE', headers: authHeaders() });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { alert(j.error || 'Gagal hapus model.'); return; }
+  loadModels();
+}
+
+async function addModel() {
+  const errEl = document.getElementById('modelErr');
+  errEl.textContent = '';
+  const id = document.getElementById('nmId').value.trim();
+  const upstream = document.getElementById('nmUpstream').value;
+  const persona = document.getElementById('nmPersona').value;
+  const desc = document.getElementById('nmDesc').value;
+  if (!id) { errEl.textContent = 'Isi nama model baru dulu.'; return; }
+  const res = await fetch(base + 'admin/models', {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ id, upstream, persona, desc, tags: [] })
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { errEl.textContent = j.error || 'Gagal tambah model.'; return; }
+  document.getElementById('nmId').value = '';
+  document.getElementById('nmPersona').value = '';
+  document.getElementById('nmDesc').value = '';
+  loadModels();
+}
+
+async function loadStream() {
+  try {
+    const res = await fetch(base + 'admin/recent', { headers: authHeaders() });
+    if (!res.ok) return;
+    const j = await res.json();
+    const el = document.getElementById('streamList');
+    if (!j.recent || !j.recent.length) { el.innerHTML = '<p class="hint">Belum ada pemakaian tercatat.</p>'; return; }
+    el.innerHTML = j.recent.map(r => `
+      <div class="stream-row">
+        <span class="ts">${fmtTime(r.ts)}</span>
+        <span>${esc(r.key_name || r.key_preview || '-')} · ${esc(r.model || '-')}</span>
+        <span class="tok">${fmt(r.total_tokens)} tok</span>
+      </div>`).join('');
+  } catch (e) {}
+}
+
+document.querySelectorAll('#budgetPresets [data-budget]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('kbudget').value = btn.dataset.budget;
+  });
+});
+
+if (token) {
+  document.getElementById('loginCard').style.display = 'none';
+  document.getElementById('panel').style.display = 'block';
+  loadAll();
+  setInterval(loadStream, 5000);
+  setInterval(loadKeys, 30000);
+}
+document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
+</body>
+</html>

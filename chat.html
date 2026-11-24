@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HanRouter // Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050505; --surface: #0D0D0D; --surface2: #141414;
+    --border: #2A2A2A; --text: #D4D4D4; --muted: #808080;
+    --orange: #FF6B00; --green: #00E676; --red: #FF453A; --amber: #FFB000;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.55; }
+  a { color: var(--orange); text-decoration: none; }
+  a:focus-visible, button:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+  header { border-bottom: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; z-index: 10; }
+  .topbar { max-width: 900px; margin: 0 auto; padding: 10px 16px 0; }
+  .prompt { font-size: 13px; color: var(--muted); }
+  .prompt b { color: var(--green); font-weight: 700; }
+  .prompt .path { color: var(--orange); }
+  .tabs { display: flex; gap: 4px; margin-top: 10px; overflow-x: auto; }
+  .tabs a { padding: 8px 14px; font-size: 12px; font-weight: 700; letter-spacing: 1px; color: var(--muted); border: 1px solid transparent; border-bottom: 0; white-space: nowrap; }
+  .tabs a:hover { color: var(--text); }
+  .tabs a.active { background: var(--orange); color: #000; }
+  #chat { max-width: 900px; margin: 0 auto; padding: 20px 16px 180px; }
+  .welcome { text-align: center; padding: 40px 16px 20px; }
+  .welcome h1 { font-size: 22px; margin: 0 0 8px; color: var(--text); letter-spacing: 1px; }
+  .welcome h1 span { color: var(--orange); }
+  .welcome p { color: var(--muted); margin: 0; font-size: 13px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 18px; }
+  .chip { background: var(--surface); border: 1px solid var(--border); padding: 8px 12px; font-size: 12px; color: var(--muted); cursor: pointer; font-family: inherit; min-height: 36px; }
+  .chip:hover { border-color: var(--orange); color: var(--text); }
+  .chip:active { transform: scale(.97); }
+  .msg { margin: 14px 0; border: 1px solid var(--border); background: var(--surface); animation: fadein .2s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .msg .mhead { display: flex; gap: 8px; padding: 7px 12px; border-bottom: 1px solid var(--border); font-size: 11px; letter-spacing: 1px; font-weight: 700; text-transform: uppercase; }
+  .msg .mhead .time { margin-left: auto; color: var(--muted); font-weight: 400; letter-spacing: 0; }
+  .msg.user { border-color: var(--orange); }
+  .msg.user .mhead { color: var(--orange); }
+  .msg.ai .mhead { color: var(--green); }
+  .msg .mbody { padding: 12px; white-space: pre-wrap; word-wrap: break-word; font-size: 14px; }
+  .msg .mactions { padding: 0 12px 10px; display: flex; gap: 8px; }
+  .msg .mactions button { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 5px 10px; font-size: 11px; font-family: inherit; cursor: pointer; min-height: 30px; }
+  .msg .mactions button:hover { color: var(--text); border-color: var(--orange); }
+  .cursor { display: inline-block; width: 8px; height: 15px; background: var(--green); vertical-align: text-bottom; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  #composer { position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, var(--bg) 25%); padding: 20px 12px 12px; }
+  #composer .wrap { max-width: 900px; margin: 0 auto; }
+  .keyrow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .keyrow label { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 1px; flex-shrink: 0; }
+  #apiKey { flex: 1; min-width: 0; background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 10px 12px; font-size: 13px; font-family: inherit; min-height: 44px; }
+  #apiKey:focus { outline: none; border-color: var(--orange); }
+  #apiKey.ok { border-color: var(--green); }
+  #apiKey.bad { border-color: var(--red); }
+  #saveKey { background: var(--surface); color: var(--muted); border: 1px solid var(--border); padding: 10px 14px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; min-height: 44px; flex-shrink: 0; letter-spacing: 1px; }
+  #saveKey:hover { color: var(--text); border-color: var(--orange); }
+  .keyhint { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .keyhint b { color: var(--amber); }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .toolbar label { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: 1px; }
+  #modelSel { flex: 1; min-width: 0; background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 10px 12px; font-size: 13px; font-family: inherit; cursor: pointer; min-height: 44px; }
+  #modelSel:hover { border-color: var(--orange); }
+  #newChat { background: var(--surface); color: var(--muted); border: 1px solid var(--border); padding: 10px 14px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; min-height: 44px; flex-shrink: 0; letter-spacing: 1px; }
+  #newChat:hover { color: var(--text); border-color: var(--orange); }
+  #newChat:active, #modelSel:active { transform: scale(.98); }
+  #composer .row { display: flex; gap: 8px; align-items: flex-end; background: var(--surface); border: 1px solid var(--border); padding: 8px; }
+  #composer .row:focus-within { border-color: var(--orange); }
+  #input { flex: 1; background: transparent; color: var(--text); border: 0; padding: 10px 8px; font-size: 14px; font-family: inherit; resize: none; min-height: 44px; max-height: 150px; }
+  #input:focus { outline: none; }
+  #send { background: var(--orange); color: #000; border: 0; padding: 0 18px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; height: 48px; flex-shrink: 0; letter-spacing: 1px; }
+  #send:hover { filter: brightness(1.1); }
+  #send:active { transform: scale(.97); }
+  #send:disabled { opacity: .4; cursor: default; }
+  .meta { font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px; }
+  @media (max-width: 640px) {
+    .welcome h1 { font-size: 18px; }
+    .toolbar label { display: none; }
+    .tabs a { padding: 8px 10px; font-size: 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div class="prompt"><b>hanrouter@uncensored</b> : <span class="path">/hanrouter</span> # <span id="promptModel"></span></div>
+    <nav class="tabs">
+      <a href="./" class="active">1:CHAT</a>
+      <a href="models">2:MODELS</a>
+      <a href="balance">3:BALANCE</a>
+    </nav>
+  </div>
+</header>
+<div id="chat">
+  <div class="welcome" id="welcome">
+    <h1>HANROUTER <span>// CHAT</span></h1>
+    <p>Chat ini butuh API key sendiri — masukin key lo di kolom API KEY di bawah. Jawaban ngalir token demi token.</p>
+    <div class="chips">
+      <button class="chip" data-q="Jelasin DNS spoofing dengan sederhana">Jelasin DNS spoofing</button>
+      <button class="chip" data-q="Buatin ide konten TikTok tentang AI hari ini">Ide konten TikTok AI</button>
+      <button class="chip" data-q="Tulis script Python buat cek API key valid atau tidak">Script cek API key</button>
+    </div>
+  </div>
+</div>
+<div id="composer">
+  <div class="wrap">
+    <div class="keyrow">
+      <label for="apiKey">API KEY &gt;</label>
+      <input id="apiKey" type="password" placeholder="dsk-... (wajib, tanpa key chat tidak jalan)" autocomplete="off" spellcheck="false" aria-label="API key">
+      <button id="saveKey" type="button">[ SIMPAN ]</button>
+    </div>
+    <div class="keyhint" id="keyHint"></div>
+    <div class="toolbar">
+      <label for="modelSel">MODEL &gt;</label>
+      <select id="modelSel" aria-label="Pilih model"></select>
+      <button id="newChat" type="button">[ NEW CHAT ]</button>
+    </div>
+    <div class="row">
+      <textarea id="input" placeholder="Tulis pesan..." rows="1" aria-label="Pesan"></textarea>
+      <button id="send" aria-label="Kirim">[ SEND ]</button>
+    </div>
+    <div class="meta"><a href="models">MODELS</a> · API: <code>/v1</code> · <a href="balance">CEK SALDO KEY</a></div>
+  </div>
+</div>
+<script>
+// [netlify-static] API dipanggil langsung ke backend ngrok.
+// Halaman ini statis di Netlify; semua fetch relatif dialihin ke API_BASE
+// + header ngrok-skip-browser-warning biar ngrok tidak nampilin interstitial.
+const API_BASE = 'https://purely-mammogram-vowed.ngrok-free.dev/deepseek/';
+(function () {
+  const _fetch = window.fetch.bind(window);
+  window.fetch = function (url, opts) {
+    opts = opts || {};
+    if (typeof url === 'string' && !url.startsWith('http')) {
+      url = API_BASE + url;
+    }
+    opts.headers = Object.assign({ 'ngrok-skip-browser-warning': 'true' }, opts.headers || {});
+    return _fetch(url, opts);
+  };
+})();
+
+const chat = document.getElementById('chat');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+const modelSel = document.getElementById('modelSel');
+const promptModel = document.getElementById('promptModel');
+const welcome = document.getElementById('welcome');
+let history = [];
+let busy = false;
+let currentModel = '';
+let defaultModel = '';
+// --- Sesi chat tersimpan di browser (localStorage) biar refresh tidak reset ---
+const LS_KEY = 'ds_chat_v1';
+function saveSession() {
+  try {
+    // batasi 100 pesan terakhir biar tidak melebihi kuota localStorage
+    const msgs = history.slice(-100);
+    localStorage.setItem(LS_KEY, JSON.stringify({ model: currentModel, messages: msgs }));
+  } catch (e) {}
+}
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const j = JSON.parse(raw);
+    if (!j || !Array.isArray(j.messages)) return null;
+    return j;
+  } catch (e) { return null; }
+}
+function clearSession() {
+  try { localStorage.removeItem(LS_KEY); } catch (e) {}
+}
+// --- API key WAJIB buat chat (disimpan di browser, dikirim sebagai Bearer) ---
+const LS_APIKEY = 'ds_api_key';
+const apiKeyInput = document.getElementById('apiKey');
+const keyHint = document.getElementById('keyHint');
+function getApiKey() { try { return (localStorage.getItem(LS_APIKEY) || '').trim(); } catch (e) { return ''; } }
+function setApiKey(v) { try { if (v) localStorage.setItem(LS_APIKEY, v); else localStorage.removeItem(LS_APIKEY); } catch (e) {} }
+function refreshKeyUI() {
+  const k = getApiKey();
+  apiKeyInput.classList.toggle('ok', !!k);
+  apiKeyInput.classList.remove('bad');
+  keyHint.innerHTML = k ? 'Key tersimpan di browser ini. Pemakaian motong kuota key lo.' : '<b>API key wajib.</b> Masukin key lo (dsk-...) biar bisa chat — tanpa key, chat tidak jalan.';
+}
+apiKeyInput.value = getApiKey();
+document.getElementById('saveKey').addEventListener('click', () => {
+  setApiKey(apiKeyInput.value.trim());
+  refreshKeyUI();
+  input.focus();
+});
+apiKeyInput.addEventListener('input', () => { setApiKey(apiKeyInput.value.trim()); refreshKeyUI(); });
+refreshKeyUI();
+
+function nowTime() {
+  const d = new Date();
+  return d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0');
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+async function loadModels() {
+  try {
+    const res = await fetch('api/models');
+    const j = await res.json();
+    defaultModel = j.default || '';
+    const want = new URLSearchParams(location.search).get('model') || '';
+    modelSel.innerHTML = '';
+    for (const m of (j.models || [])) {
+      const opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.id + (m.id === j.default ? ' (default)' : '');
+      modelSel.appendChild(opt);
+    }
+    currentModel = (want && (j.models || []).some(m => m.id === want)) ? want : defaultModel;
+    // kalau tidak ada ?model= di URL, pakai model dari sesi tersimpan (kalau masih ada)
+    if (!want) {
+      const saved = loadSession();
+      if (saved && saved.model && (j.models || []).some(m => m.id === saved.model)) {
+        currentModel = saved.model;
+      }
+    }
+    modelSel.value = currentModel;
+    promptModel.textContent = currentModel ? 'model=' + currentModel : '';
+    restoreChat();
+  } catch (e) {
+    modelSel.innerHTML = '<option>DeepSeek-V4-Flash-0731</option>';
+    currentModel = 'DeepSeek-V4-Flash-0731';
+    promptModel.textContent = 'model=' + currentModel;
+    restoreChat();
+  }
+}
+
+// Bangun ulang tampilan chat dari sesi tersimpan (dipanggil setelah model dimuat).
+function restoreChat() {
+  const saved = loadSession();
+  if (!saved || !saved.messages.length) return;
+  history = saved.messages.map(m => ({ role: m.role, content: m.content, time: m.time, model: m.model }));
+  if (welcome) welcome.style.display = 'none';
+  for (const m of history) {
+    addMsg(m.role, m.content, { time: m.time, model: m.model, save: false });
+  }
+}
+
+modelSel.addEventListener('change', () => {
+  currentModel = modelSel.value;
+  promptModel.textContent = 'model=' + currentModel;
+  saveSession();
+});
+
+document.getElementById('newChat').addEventListener('click', () => {
+  history = [];
+  clearSession();
+  chat.innerHTML = '';
+  chat.appendChild(welcome);
+  welcome.style.display = '';
+  input.focus();
+});
+
+function addMsg(role, text, opts) {
+  opts = opts || {};
+  const d = document.createElement('div');
+  d.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
+  const head = document.createElement('div');
+  head.className = 'mhead';
+  const label = role === 'user' ? 'YOU' : esc(opts.model || currentModel || 'AI');
+  head.innerHTML = '<span>' + label + '</span><span class="time">' + esc(opts.time || nowTime()) + ' WIB</span>';
+  d.appendChild(head);
+  const body = document.createElement('div');
+  body.className = 'mbody';
+  body.textContent = text;
+  d.appendChild(body);
+  d._body = body;
+  if (role === 'ai') {
+    const acts = document.createElement('div');
+    acts.className = 'mactions';
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.textContent = '[ COPY ]';
+    copyBtn.addEventListener('click', () => {
+      if (navigator.clipboard) navigator.clipboard.writeText(d._body.textContent);
+      copyBtn.textContent = '[ COPIED ]';
+      setTimeout(() => { copyBtn.textContent = '[ COPY ]'; }, 1500);
+    });
+    acts.appendChild(copyBtn);
+    d.appendChild(acts);
+    d._acts = acts;
+  }
+  chat.appendChild(d);
+  window.scrollTo(0, document.body.scrollHeight);
+  return d;
+}
+function setBody(el, text) { if (el._body) el._body.textContent = text; else el.textContent = text; }
+
+async function send(text) {
+  text = (text !== undefined ? text : input.value).trim();
+  if (!text || busy) return;
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    if (welcome) welcome.style.display = 'none';
+    addMsg('ai', 'API key wajib — masukin key lo (dsk-...) di kolom API KEY di atas, lalu kirim lagi. Tanpa key, chat tidak jalan.');
+    apiKeyInput.focus();
+    return;
+  }
+  busy = true; sendBtn.disabled = true;
+  input.value = ''; input.style.height = 'auto';
+  if (welcome) welcome.style.display = 'none';
+  addMsg('user', text);
+  history.push({ role: 'user', content: text, time: nowTime() });
+  saveSession();
+  const aiEl = addMsg('ai', '');
+  aiEl._body.innerHTML = '<span class="cursor"></span>';
+  if (aiEl._acts) aiEl._acts.style.display = 'none';
+  try {
+    // kirim ke server cuma role+content (field time/model hanya buat tampilan/sesi lokal)
+    const cleanHistory = history.map(m => ({ role: m.role, content: m.content }));
+    const res = await fetch('api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({ model: currentModel, messages: cleanHistory, stream: true })
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      const msg = (j.error && j.error.message) ? j.error.message : res.status;
+      if (res.status === 401) {
+        apiKeyInput.classList.add('bad');
+        setBody(aiEl, 'API key tidak valid / kadaluarsa — cek key lo di [ CEK SALDO KEY ] atau minta key baru ke admin. Pesan server: ' + msg);
+      } else {
+        setBody(aiEl, 'Error: ' + msg);
+      }
+      history.push({ role: 'assistant', content: aiEl._body.textContent, time: nowTime(), model: currentModel });
+      saveSession();
+      if (aiEl._acts) aiEl._acts.style.display = '';
+      busy = false; sendBtn.disabled = false; return;
+    }
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let full = '', buf = '';
+    let streamDone = false;
+    aiEl._body.textContent = '';
+    while (!streamDone) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n');
+      buf = parts.pop();
+      for (const part of parts) {
+        for (const line of part.split('\n')) {
+          const l = line.trim();
+          if (!l.startsWith('data:')) continue;
+          const data = l.slice(5).trim();
+          if (data === '[DONE]') { streamDone = true; break; }
+          try {
+            const j = JSON.parse(data);
+            const delta = (j.choices && j.choices[0] && j.choices[0].delta) || {};
+            if (delta.content) { full += delta.content; setBody(aiEl, full); window.scrollTo(0, document.body.scrollHeight); }
+          } catch (e) {}
+        }
+        if (streamDone) break;
+      }
+    }
+    try { await reader.cancel(); } catch (e) {}
+    if (!full) setBody(aiEl, '(tidak ada jawaban)');
+    history.push({ role: 'assistant', content: full, time: nowTime(), model: currentModel });
+    saveSession();
+  } catch (e) {
+    setBody(aiEl, 'Error jaringan: ' + e.message);
+    history.push({ role: 'assistant', content: aiEl._body.textContent, time: nowTime(), model: currentModel });
+    saveSession();
+  }
+  if (aiEl._acts) aiEl._acts.style.display = '';
+  busy = false; sendBtn.disabled = false;
+  input.focus();
+}
+
+sendBtn.onclick = () => send();
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 150) + 'px';
+});
+document.querySelectorAll('.chip').forEach(c => {
+  c.addEventListener('click', () => send(c.dataset.q));
+});
+loadModels();
+input.focus();
+</script>
+</body>
+</html>
