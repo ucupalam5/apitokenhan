@@ -33,3 +33,4 @@ Ganti `API_BASE` di tiap file HTML kalau URL backend pindah.
 
 <!-- deploy-trigger 2026-11-25 00:58 WIB -->
 <!-- deploy-trigger 2026-11-25 01:11 WIB - git connected -->
+<!-- deploy-trigger 2026-11-25 01:20 WIB - github app access fixed -->
