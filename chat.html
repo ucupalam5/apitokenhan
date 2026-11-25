@@ -55,6 +55,17 @@
   #apiKey:focus { outline: none; border-color: var(--orange); }
   #apiKey.ok { border-color: var(--green); }
   #apiKey.bad { border-color: var(--red); }
+  .keyrow.hidden, .keyhint.hidden { display: none; }
+  .keyrow.alert #apiKey { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 0 14px rgba(255,69,58,.35); }
+  .keyrow.alert label { color: var(--red); }
+  .keyrow.shake { animation: shake .45s ease; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-7px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+  #toasts { position: fixed; top: 16px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: min(420px, 90vw); }
+  .toast { background: #111; border: 1px solid var(--border); border-left: 3px solid var(--green); color: var(--text); padding: 10px 14px; font-size: 13px; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.5); display: flex; gap: 10px; align-items: flex-start; animation: toastIn .2s ease-out; }
+  .toast.err { border-left-color: var(--red); }
+  .toast.info { border-left-color: var(--amber); }
+  .toast button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0; min-height: 0; }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
   #saveKey { background: var(--surface); color: var(--muted); border: 1px solid var(--border); padding: 10px 14px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; min-height: 44px; flex-shrink: 0; letter-spacing: 1px; }
   #saveKey:hover { color: var(--text); border-color: var(--orange); }
   .keyhint { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
@@ -86,6 +97,7 @@
 </style>
 </head>
 <body>
+<div id="toasts"></div>
 <header>
   <div class="topbar">
     <div class="prompt"><b>hanrouter@uncensored</b> : <span class="path">/hanrouter</span> # <span id="promptModel"></span></div>
@@ -109,7 +121,7 @@
 </div>
 <div id="composer">
   <div class="wrap">
-    <div class="keyrow">
+    <div class="keyrow" id="keyRow">
       <label for="apiKey">API KEY &gt;</label>
       <input id="apiKey" type="password" placeholder="dsk-... (wajib, tanpa key chat tidak jalan)" autocomplete="off" spellcheck="false" aria-label="API key">
       <button id="saveKey" type="button">[ SIMPAN ]</button>
@@ -124,7 +136,7 @@
       <textarea id="input" placeholder="Tulis pesan..." rows="1" aria-label="Pesan"></textarea>
       <button id="send" aria-label="Kirim">[ SEND ]</button>
     </div>
-    <div class="meta"><a href="models">MODELS</a> · API: <code>/v1</code> · <a href="balance">CEK SALDO KEY</a></div>
+    <div class="meta"><a href="models">MODELS</a> · API: <code>/v1</code> · <a href="balance">CEK SALDO KEY</a> · <a href="#" id="changeKey">[ GANTI KEY ]</a></div>
   </div>
 </div>
 <script>
@@ -177,26 +189,117 @@ function loadSession() {
 function clearSession() {
   try { localStorage.removeItem(LS_KEY); } catch (e) {}
 }
+// --- Toast notification (pojok kanan atas, hilang sendiri) ---
+function toast(msg, type) {
+  const box = document.getElementById('toasts');
+  if (!box) return;
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'err' ? ' err' : type === 'info' ? ' info' : '');
+  const span = document.createElement('span');
+  span.textContent = msg;
+  const x = document.createElement('button');
+  x.type = 'button';
+  x.textContent = '✕';
+  x.onclick = () => el.remove();
+  el.appendChild(span); el.appendChild(x);
+  box.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 320); }, 4000);
+}
 // --- API key WAJIB buat chat (disimpan di browser, dikirim sebagai Bearer) ---
 const LS_APIKEY = 'ds_api_key';
 const apiKeyInput = document.getElementById('apiKey');
 const keyHint = document.getElementById('keyHint');
+const keyRow = document.getElementById('keyRow');
 function getApiKey() { try { return (localStorage.getItem(LS_APIKEY) || '').trim(); } catch (e) { return ''; } }
 function setApiKey(v) { try { if (v) localStorage.setItem(LS_APIKEY, v); else localStorage.removeItem(LS_APIKEY); } catch (e) {} }
+// Box key menghilang kalau key valid (biar tidak menghalangi chat).
+// Muncul lagi (getar + merah + toast) kalau key tidak valid / token habis.
+function hideKeyBox() {
+  keyRow.classList.add('hidden');
+  keyHint.classList.add('hidden');
+  keyRow.classList.remove('alert', 'shake');
+  apiKeyInput.classList.remove('bad');
+}
+function showKeyBox(reason, alertMode) {
+  keyRow.classList.remove('hidden');
+  keyHint.classList.remove('hidden');
+  if (alertMode) {
+    keyRow.classList.add('alert');
+    apiKeyInput.classList.add('bad');
+    // retrigger animasi getar tiap kali muncul
+    keyRow.classList.remove('shake');
+    void keyRow.offsetWidth;
+    keyRow.classList.add('shake');
+    if (reason) keyHint.innerHTML = '<b style="color:var(--red)">' + esc(reason) + '</b>';
+    apiKeyInput.focus();
+  } else {
+    keyRow.classList.remove('alert', 'shake');
+    apiKeyInput.classList.remove('bad');
+    keyHint.innerHTML = 'Masukan key baru (dsk-...), lalu tekan [ SIMPAN ].';
+    apiKeyInput.focus();
+    apiKeyInput.select();
+  }
+}
+// Cek key ke server: valid -> box ngumpet; tidak valid / token habis -> box muncul alert.
+async function validateKey(showToastOk) {
+  const k = getApiKey();
+  if (!k) { showKeyBox('', false); refreshKeyUI(); return false; }
+  try {
+    const res = await fetch('api/key/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: k })
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      showKeyBox('API key tidak valid — masukin key baru.', true);
+      toast('API key tidak valid. Masukin key baru.', 'err');
+      return false;
+    }
+    if (!j.enabled) {
+      showKeyBox('Key ini dinonaktifkan admin.', true);
+      toast('Key ini dinonaktifkan admin.', 'err');
+      return false;
+    }
+    if (j.expired) {
+      showKeyBox('API key kadaluarsa — minta key baru ke admin.', true);
+      toast('API key kadaluarsa.', 'err');
+      return false;
+    }
+    if (!j.unlimited && (j.remaining == null || j.remaining <= 0)) {
+      showKeyBox('Token key habis — ganti key atau minta key baru ke admin.', true);
+      toast('Token key habis. Ganti key.', 'err');
+      return false;
+    }
+    hideKeyBox();
+    if (showToastOk) toast('API key valid' + (j.unlimited ? ' (UNLIMITED)' : '') + ' — siap chat.', 'ok');
+    return true;
+  } catch (e) {
+    // server tidak terjangkau: jangan kunci chat, biarkan box tampil normal
+    showKeyBox('', false);
+    return false;
+  }
+}
 function refreshKeyUI() {
   const k = getApiKey();
   apiKeyInput.classList.toggle('ok', !!k);
-  apiKeyInput.classList.remove('bad');
-  keyHint.innerHTML = k ? 'Key tersimpan di browser ini. Pemakaian motong kuota key lo.' : '<b>API key wajib.</b> Masukin key lo (dsk-...) biar bisa chat — tanpa key, chat tidak jalan.';
+  if (!k) keyHint.innerHTML = '<b>API key wajib.</b> Masukin key lo (dsk-...) biar bisa chat — tanpa key, chat tidak jalan.';
 }
 apiKeyInput.value = getApiKey();
-document.getElementById('saveKey').addEventListener('click', () => {
+document.getElementById('saveKey').addEventListener('click', async () => {
   setApiKey(apiKeyInput.value.trim());
   refreshKeyUI();
+  await validateKey(true);
   input.focus();
 });
 apiKeyInput.addEventListener('input', () => { setApiKey(apiKeyInput.value.trim()); refreshKeyUI(); });
+document.getElementById('changeKey').addEventListener('click', (e) => {
+  e.preventDefault();
+  showKeyBox('', false);
+});
 refreshKeyUI();
+// Validasi key tersimpan pas halaman dibuka: valid -> box ngumpet, bermasalah -> box muncul alert.
+if (getApiKey()) validateKey(false);
 
 function nowTime() {
   const d = new Date();
@@ -304,7 +407,8 @@ async function send(text) {
   if (!apiKey) {
     if (welcome) welcome.style.display = 'none';
     addMsg('ai', 'API key wajib — masukin key lo (dsk-...) di kolom API KEY di atas, lalu kirim lagi. Tanpa key, chat tidak jalan.');
-    apiKeyInput.focus();
+    showKeyBox('API key wajib — masukin key lo dulu.', true);
+    toast('API key wajib. Masukin key dulu.', 'err');
     return;
   }
   busy = true; sendBtn.disabled = true;
@@ -330,8 +434,15 @@ async function send(text) {
       if (res.status === 401) {
         apiKeyInput.classList.add('bad');
         setBody(aiEl, 'API key tidak valid / kadaluarsa — cek key lo di [ CEK SALDO KEY ] atau minta key baru ke admin. Pesan server: ' + msg);
+        showKeyBox('API key tidak valid / kadaluarsa — masukin key baru.', true);
+        toast('API key tidak valid / kadaluarsa. Masukin key baru.', 'err');
+      } else if (res.status === 402) {
+        setBody(aiEl, 'Token key habis — ganti key atau minta key baru ke admin. Pesan server: ' + msg);
+        showKeyBox('Token key habis — ganti key atau minta key baru ke admin.', true);
+        toast('Token key habis. Ganti key.', 'err');
       } else {
         setBody(aiEl, 'Error: ' + msg);
+        toast('Error: ' + msg, 'err');
       }
       history.push({ role: 'assistant', content: aiEl._body.textContent, time: nowTime(), model: currentModel });
       saveSession();

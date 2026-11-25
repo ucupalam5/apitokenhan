@@ -54,6 +54,12 @@
   .ok { color: var(--green); }
   .warn { color: var(--amber); }
   .red { color: var(--red); }
+  #toasts { position: fixed; top: 16px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; max-width: min(420px, 90vw); }
+  .toast { background: #111; border: 1px solid var(--border); border-left: 3px solid var(--green); color: var(--text); padding: 10px 14px; font-size: 13px; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.5); display: flex; gap: 10px; align-items: flex-start; animation: toastIn .2s ease-out; }
+  .toast.err { border-left-color: var(--red); }
+  .toast.info { border-left-color: var(--amber); }
+  .toast button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0; min-height: 0; }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
   .mono { font-size: 12px; word-break: break-all; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -92,6 +98,7 @@
 </style>
 </head>
 <body>
+<div id="toasts"></div>
 <header>
   <div class="topbar">
     <div class="prompt"><b>hanrouter@uncensored</b> : <span class="path">/hanrouter</span> #</div>
@@ -141,7 +148,9 @@
           <button class="ghost" type="button" data-budget="1000000">[ 1M ]</button>
           <button class="ghost" type="button" data-budget="5000000">[ 5M ]</button>
           <button class="ghost" type="button" data-budget="10000000">[ 10M ]</button>
+          <button class="ghost" type="button" data-budget="unlimited">[ UNLIMITED ∞ ]</button>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);"><input type="checkbox" id="kunlimited" style="width:auto;min-height:0;margin:0;"> UNLIMITED — tanpa batas token (kuota tidak pernah habis)</label>
         <label for="krpm">RATE LIMIT (request/menit, 0 = tanpa batas)</label>
         <input id="krpm" type="number" min="0" max="10000" value="60" placeholder="mis: 60">
         <label for="kexpiry">MASA BERLAKU</label>
@@ -241,6 +250,22 @@ let lastNewKey = '';
 let knownUpstreams = {};
 
 function fmt(n) { return (n || 0).toLocaleString('id-ID'); }
+// Toast notification (ganti alert): toast('pesan', 'ok'|'err'|'info')
+function toast(msg, type) {
+  const box = document.getElementById('toasts');
+  if (!box) return;
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'err' ? ' err' : type === 'info' ? ' info' : '');
+  const span = document.createElement('span');
+  span.textContent = msg;
+  const x = document.createElement('button');
+  x.type = 'button';
+  x.textContent = '✕';
+  x.onclick = () => el.remove();
+  el.appendChild(span); el.appendChild(x);
+  box.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 320); }, 3500);
+}
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 function fmtTime(ts) {
   if (!ts) return '-';
@@ -289,7 +314,10 @@ async function loadKeys() {
     const toggleBtn = k.enabled
       ? `<button class="ghost" onclick="toggleKey('${k.id}', false)">[ NONAKTIF ]</button>`
       : `<button class="ghost" onclick="toggleKey('${k.id}', true)">[ AKTIFKAN ]</button>`;
-    html += `<tr><td><b>${esc(k.name)}</b></td><td class="mono">${esc(k.key_preview)}</td><td>${fmt(k.budget)}</td><td class="${cls}">${fmt(k.used)} (${pct}%)<div class="bar"><i class="${barCls}" style="width:${Math.min(pct, 100)}%"></i></div></td><td><b>${fmt(k.remaining)}</b></td><td>${k.rpm ? fmt(k.rpm) : '∞'}</td><td class="${expCls}">${exp}</td><td style="font-size:11px">${models}</td><td>Rp${fmt(Math.round(k.cost_idr || 0))}</td><td>${status}</td><td style="white-space:nowrap">${toggleBtn} <button class="ghost" onclick="showUsage('${k.id}')">RIWAYAT</button> <button class="danger" onclick="revoke('${k.id}')">HAPUS</button></td></tr>`;
+    const budgetCell = k.budget ? fmt(k.budget) : '∞';
+    const usedCell = k.budget ? `${fmt(k.used)} (${pct}%)` : fmt(k.used);
+    const remainingCell = k.budget ? fmt(k.remaining) : '∞';
+    html += `<tr><td><b>${esc(k.name)}</b></td><td class="mono">${esc(k.key_preview)}</td><td>${budgetCell}</td><td class="${cls}">${usedCell}<div class="bar"><i class="${barCls}" style="width:${Math.min(pct, 100)}%"></i></div></td><td><b>${remainingCell}</b></td><td>${k.rpm ? fmt(k.rpm) : '∞'}</td><td class="${expCls}">${exp}</td><td style="font-size:11px">${models}</td><td>Rp${fmt(Math.round(k.cost_idr || 0))}</td><td>${status}</td><td style="white-space:nowrap">${toggleBtn} <button class="ghost" onclick="showUsage('${k.id}')">RIWAYAT</button> <button class="danger" onclick="revoke('${k.id}')">HAPUS</button></td></tr>`;
   }
   html += '</table>';
   html += `<p class="hint" style="margin-top: 12px;">Total terpakai semua key: <b>${fmt(j.total_used)}</b> token.</p>`;
@@ -304,25 +332,27 @@ function fmtDate(ts) {
 
 async function createKey() {
   const name = document.getElementById('kname').value.trim();
-  const budget = parseInt(document.getElementById('kbudget').value, 10);
-  if (!budget || budget <= 0) { alert('Isi jumlah token dulu (angka > 0).'); return; }
+  const unlimited = document.getElementById('kunlimited').checked;
+  const budget = unlimited ? 0 : parseInt(document.getElementById('kbudget').value, 10);
+  if (!unlimited && (!budget || budget <= 0)) { toast('Isi jumlah token dulu (angka > 0) atau centang UNLIMITED.', 'err'); return; }
   const rpm = parseInt(document.getElementById('krpm').value, 10);
   const expires_days = parseInt(document.getElementById('kexpiry').value, 10);
   const allowed_models = Array.from(document.querySelectorAll('#kmodels input[type=checkbox]:checked')).map(c => c.value);
-  const res = await fetch(base + 'admin/keys', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ name: name || 'key', budget, rpm: isNaN(rpm) ? 60 : rpm, expires_days: isNaN(expires_days) ? 0 : expires_days, allowed_models }) });
+  const res = await fetch(base + 'admin/keys', { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ name: name || 'key', budget, unlimited, rpm: isNaN(rpm) ? 60 : rpm, expires_days: isNaN(expires_days) ? 0 : expires_days, allowed_models }) });
   const j = await res.json();
-  if (!res.ok) { alert(j.error || 'Gagal buat key.'); return; }
+  if (!res.ok) { toast(j.error || 'Gagal buat key.', 'err'); return; }
   lastNewKey = j.key;
   document.getElementById('newkey').style.display = 'block';
   document.getElementById('newkeyVal').textContent = j.key;
-  document.getElementById('newkeyMeta').textContent = `Nama: ${j.name} | Budget: ${fmt(j.budget)} token | RPM: ${j.rpm || '∞'} | Berlaku: ${j.expires_at ? fmtDate(j.expires_at) : 'selamanya'}`;
+  document.getElementById('newkeyMeta').textContent = `Nama: ${j.name} | Budget: ${(j.unlimited || j.budget === 0) ? 'UNLIMITED (∞)' : fmt(j.budget) + ' token'} | RPM: ${j.rpm || '∞'} | Berlaku: ${j.expires_at ? fmtDate(j.expires_at) : 'selamanya'}`;
+  toast('Key baru berhasil dibuat' + ((j.unlimited || j.budget === 0) ? ' (UNLIMITED)' : '') + ' — salin sekarang, hanya tampil sekali.', 'ok');
   loadKeys();
 }
 
 async function toggleKey(id, enable) {
   if (!confirm(enable ? 'Aktifkan key ini lagi?' : 'Nonaktifkan key ini? Key nonaktif tidak bisa dipakai sampai diaktifkan lagi.')) return;
   const res = await fetch(base + 'admin/keys/' + encodeURIComponent(id), { method: 'POST', headers: authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify({ enabled: enable }) });
-  if (res.ok) loadKeys(); else alert('Gagal ubah status key.');
+  if (res.ok) { loadKeys(); toast(enable ? 'Key diaktifkan.' : 'Key dinonaktifkan.', 'ok'); } else toast('Gagal ubah status key.', 'err');
 }
 
 async function showUsage(id) {
@@ -376,17 +406,17 @@ async function savePricing() {
   if (!res.ok) { document.getElementById('pricingErr').textContent = j.error || 'Gagal simpan harga.'; return; }
   document.getElementById('pricingErr').textContent = '';
   loadKeys();
-  alert('Harga tersimpan.');
+  toast('Harga tersimpan.', 'ok');
 }
 
 function copyNewKey() {
-  if (lastNewKey && navigator.clipboard) navigator.clipboard.writeText(lastNewKey);
+  if (lastNewKey && navigator.clipboard) navigator.clipboard.writeText(lastNewKey).then(() => toast('Key disalin ke clipboard.', 'ok')).catch(() => toast('Gagal salin key.', 'err'));
 }
 
 async function revoke(id) {
   if (!confirm('Hapus key ini? Key yang sudah dihapus tidak bisa dipakai lagi.')) return;
   const res = await fetch(base + 'admin/keys/' + encodeURIComponent(id), { method: 'DELETE', headers: authHeaders() });
-  if (res.ok) loadKeys(); else alert('Gagal hapus.');
+  if (res.ok) { loadKeys(); toast('Key dihapus.', 'ok'); } else toast('Gagal hapus.', 'err');
 }
 
 async function loadModels() {
@@ -426,6 +456,7 @@ async function loadModels() {
           <select data-f="upstream"></select>
         </div>
       </div>
+      <p class="hint" data-f="basehint" style="margin-top:6px"></p>
       <label>PERSONA (KOSONG = DEFAULT)</label>
       <textarea data-f="persona" placeholder="You are a helpful AI assistant...">${esc(m.persona || '')}</textarea>
       <label>DESKRIPSI</label>
@@ -464,6 +495,9 @@ async function loadModels() {
       if (uid === m.upstream) { curUp = name; break; }
     }
     upSel.value = curUp || Object.keys(knownUpstreams)[0] || '';
+    // tampilkan base upstream biar ketahuan model ini lari ke mana (Nodaroo / Gonka)
+    const baseHint = card.querySelector('[data-f="basehint"]');
+    if (baseHint) baseHint.textContent = m.upstream_base ? ('Base: ' + m.upstream_base + ' (server sendiri)') : 'Base: Gonka (default)';
     // render daftar persona files + wire upload/delete
     const fileListEl = card.querySelector('[data-filelist]');
     function renderFiles() {
@@ -481,7 +515,7 @@ async function loadModels() {
         btn.addEventListener('click', async () => {
           if (!confirm('Hapus file "' + btn.dataset.delfile + '" dari model ini?')) return;
           const res = await fetch(base + 'admin/models/' + encodeURIComponent(mid) + '/persona-file/' + encodeURIComponent(btn.dataset.delfile), { method: 'DELETE', headers: authHeaders() });
-          if (res.ok) loadModels(); else alert('Gagal hapus file.');
+          if (res.ok) { loadModels(); toast('File dihapus.', 'ok'); } else toast('Gagal hapus file.', 'err');
         });
       });
     }
@@ -489,7 +523,7 @@ async function loadModels() {
     card.querySelector('[data-act="upload"]').addEventListener('click', () => {
       const fi = card.querySelector('[data-fileinput]');
       const file = fi.files && fi.files[0];
-      if (!file) { alert('Pilih file dulu (SOUL.md / SKILL.md / prefill.json).'); return; }
+      if (!file) { toast('Pilih file dulu (SOUL.md / SKILL.md / prefill.json).', 'err'); return; }
       const kind = card.querySelector('[data-filekind]').value;
       const reader = new FileReader();
       reader.onload = async () => {
@@ -500,11 +534,12 @@ async function loadModels() {
           body: JSON.stringify({ filename: file.name, kind, content })
         });
         const j = await res.json().catch(() => ({}));
-        if (!res.ok) { alert(j.error || 'Gagal upload file.'); return; }
+        if (!res.ok) { toast(j.error || 'Gagal upload file.', 'err'); return; }
         fi.value = '';
         loadModels();
+        toast('File ' + file.name + ' berhasil di-upload.', 'ok');
       };
-      reader.onerror = () => alert('Gagal baca file.');
+      reader.onerror = () => toast('Gagal baca file.', 'err');
       reader.readAsText(file);
     });
     card.querySelector('[data-act="save"]').addEventListener('click', () => saveModel(card, mid));
@@ -521,23 +556,25 @@ async function saveModel(card, oldId, setDefault) {
   const persona = card.querySelector('[data-f="persona"]').value;
   const desc = card.querySelector('[data-f="desc"]').value;
   const tags = card.querySelector('[data-f="tags"]').value.split(',').map(s => s.trim()).filter(Boolean);
-  if (!name) { alert('Nama model wajib diisi.'); return; }
+  if (!name) { toast('Nama model wajib diisi.', 'err'); return; }
   const res = await fetch(base + 'admin/models', {
     method: 'POST',
     headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ old_id: oldId, id: name, upstream, persona, desc, tags, set_default: !!setDefault })
   });
   const j = await res.json().catch(() => ({}));
-  if (!res.ok) { alert(j.error || 'Gagal simpan model.'); return; }
+  if (!res.ok) { toast(j.error || 'Gagal simpan model.', 'err'); return; }
   loadModels();
+  toast('Model "' + name + '" berhasil disimpan.', 'ok');
 }
 
 async function deleteModel(mid) {
   if (!confirm('Hapus model "' + mid + '"? Model ini tidak bisa dipakai lagi.')) return;
   const res = await fetch(base + 'admin/models/' + encodeURIComponent(mid), { method: 'DELETE', headers: authHeaders() });
   const j = await res.json().catch(() => ({}));
-  if (!res.ok) { alert(j.error || 'Gagal hapus model.'); return; }
+  if (!res.ok) { toast(j.error || 'Gagal hapus model.', 'err'); return; }
   loadModels();
+  toast('Model "' + mid + '" dihapus.', 'ok');
 }
 
 async function addModel() {
@@ -559,6 +596,7 @@ async function addModel() {
   document.getElementById('nmPersona').value = '';
   document.getElementById('nmDesc').value = '';
   loadModels();
+  toast('Model "' + id + '" berhasil ditambah.', 'ok');
 }
 
 async function loadStream() {
@@ -579,8 +617,20 @@ async function loadStream() {
 
 document.querySelectorAll('#budgetPresets [data-budget]').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.getElementById('kbudget').value = btn.dataset.budget;
+    if (btn.dataset.budget === 'unlimited') {
+      document.getElementById('kunlimited').checked = true;
+      document.getElementById('kbudget').disabled = true;
+      document.getElementById('kbudget').value = '';
+    } else {
+      document.getElementById('kunlimited').checked = false;
+      document.getElementById('kbudget').disabled = false;
+      document.getElementById('kbudget').value = btn.dataset.budget;
+    }
   });
+});
+document.getElementById('kunlimited').addEventListener('change', (e) => {
+  document.getElementById('kbudget').disabled = e.target.checked;
+  if (e.target.checked) document.getElementById('kbudget').value = '';
 });
 
 if (token) {
